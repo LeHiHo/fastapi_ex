@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from domain.question import question_router
+from domain.crawling import ex
 
 app = FastAPI()
 
@@ -17,4 +18,4 @@ app.add_middleware(
 
 
 
-app.include_router(question_router.router)
+app.include_router(ex.router)
