@@ -11,12 +11,12 @@ router = APIRouter(
     prefix="/crawl",
 )
 
-def run_selenium():
+def run_selenium(keyword):
     options = Options()
     options.headless = True
     driver = webdriver.Chrome(options=options)
     try:
-        driver.get("https://www.coupang.com/np/search?component=&q=과일&channel=user")
+        driver.get(f"https://www.coupang.com/np/search?component=&q={keyword}&channel=user")
         time.sleep(5)
         source = driver.page_source
         soup = BeautifulSoup(source, 'html.parser')
@@ -31,7 +31,7 @@ def run_selenium():
 
 @router.get("/fruits")
 async def crawl_fruits():
-    product_data = run_in_thread(run_selenium)
+    product_data = run_in_thread(run_selenium('오렌지'))
     return product_data
 
 def run_in_thread(func):
