@@ -1,11 +1,20 @@
-from pydantic import BaseModel
 import threading
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 import time
 from bs4 import BeautifulSoup
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, validator
+
+from selenium import webdriver
+# from selenium.webdriver.chrome.options import Options
+# from selenium.webdriver.chrome.service import Service
+# from webdriver_manager.chrome import ChromeDriverManager
+
+from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.service import Service
+from webdriver_manager.firefox import GeckoDriverManager
+
+
 
 router = APIRouter(
     prefix="/api/products",
@@ -26,8 +35,22 @@ class ProductQuery(BaseModel):
 
 def run_selenium(keyword):
     options = Options()
-    options.headless = True
-    driver = webdriver.Chrome(options=options)
+    # options.headless = True
+    options.add_argument("window-size=1920x1080")
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36")    
+    options.add_argument("--disable-gpu")  
+    options.add_argument("--headless")
+    options.add_argument("--start-maximized")
+
+    # service = Service(ChromeDriverManager().install())
+    # driver = webdriver.Chrome(service=service, options=options)
+
+    service = Service(GeckoDriverManager().install())
+    driver = webdriver.Firefox(service=service, options=options)
+
+
+    
+
     try:
         driver.get(f"https://www.coupang.com/np/search?component=&q={keyword}&channel=user")
         time.sleep(5)
