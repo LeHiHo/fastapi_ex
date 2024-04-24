@@ -7,8 +7,6 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 # from selenium.webdriver.chrome.options import Options
 
-from selenium.webdriver.firefox.service import Service
-from webdriver_manager.firefox import GeckoDriverManager
 
 router = APIRouter(prefix="/api/products")
 
@@ -28,16 +26,12 @@ def setup_driver():
     options = Options()
     options.headless = True
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36")
-    # options.add_argument("--disable-gpu")
-    # options.add_argument("--headless")
-    # service = Service(GeckoDriverManager().install()) # github api 한도초과남
-    # return webdriver.Chrome(service=service, options=options)
-
-
+    options.add_argument("--disable-gpu")
+    options.add_argument("--headless")
     return webdriver.Firefox(options=options)
 
 
-def crawl_site(driver, url, find_all_args, name_args, price_args):
+def crawl_site(driver, url, find_all_args, name_args, price_args, img_args):
     driver.get(url)
     time.sleep(5)
     soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -45,8 +39,18 @@ def crawl_site(driver, url, find_all_args, name_args, price_args):
     for item in soup.find_all(*find_all_args):
         name = item.find(*name_args)
         price = item.find(*price_args)
-        if name and price:
-            products.append({'title': name.text.strip(), 'price': price.text.strip()})
+        img = item.find(*img_args)
+        if name and price and img:
+            img_url = img['src']
+
+            if not img_url.startswith(('http:', 'https:')):
+                img_url = 'https:' + img_url
+
+            products.append({
+                'title': name.text.strip(),
+                'price': price.text.strip(),
+                'image_url': img_url
+            })
     return products
 
 def run_selenium(keyword):
@@ -54,13 +58,14 @@ def run_selenium(keyword):
     try:
         coupang_url = f"https://www.coupang.com/np/search?component=&q={keyword}"        
         aliExpress_url = f"https://ko.aliexpress.com/w/wholesale-{keyword}.html?spm=a2g0o.productlist.search.0"
-        temu_url = f"https://www.temu.com/search_result.html?search_key=123%20c%EC%BB%AC%20%EC%86%8D%EB%88%88%EC%8D%B9&search_method=recent&refer_page_el_sn=200254&srch_enter_source=top_search_entrance_10132&_x_channel_scene=spike&_x_channel_src=1&_x_sessn_id=8e7j9npsxz&refer_page_name=lightning-deals&refer_page_id=10132_1713962421652_pgstqr10d5&refer_page_sn=10132"
+        # temu_url = f"https://www.google.com/search?q=site:temu.com+{keyword}84&sca_esv=45843383d781bdbb&rlz=1C5MACD_enKR1067KR1067&biw=1920&bih=934&udm=2&prmd=sivnbmz&sxsrf=ACQVn08jK64eyvGkZ0z3HzYkKbJ92UZOZw:1713965431454&source=lnms&ved=1t:200715&ictx=111"
         # amazon_url = f"https://www.amazon.com/s?k={keyword}&crid=27U3YQOWZ2RCZ&sprefix=us%2Caps%2C275&ref=nb_sb_noss_2"
         # never_url = f""
 
-        # coupang_products = crawl_site(driver, coupang_url, ['div', {'class': 'descriptions-inner'}], ['div', {'class': 'name'}], ['strong', {'class': 'price-value'}])
-        # aliExpress_products = crawl_site(driver, aliExpress_url, ['div', {'class': 'multi--content--11nFIBL'}], ['div', {'class': 'multi--title--G7dOCj3'}], ['div', {'class': 'multi--price-sale--U-S0jtj'}])
-        temu_products = crawl_site(driver,temu_url, ['div', {'class': '_6q6qVUF5 _1QhQr8pq _1ak1dai3 _3AbcHYoU'}], ['h2', {'class': '_2BvQbnbN'}], ['div', {'class': 'LiwdOzUs'}])
+        coupang_products = crawl_site(driver, coupang_url, ['li', {'class': 'search-product'}], ['div', {'class': 'name'}], ['strong', {'class': 'price-value'}],['img',{'class':'search-product-wrap-img'}])
+        aliExpress_products = crawl_site(driver, aliExpress_url, ['div', {'class': 'list--gallery--C2f2tvm search-item-card-wrapper-gallery'}], ['h3', {'class': 'multi--titleText--nXeOvyr'}], ['div', {'class': 'multi--price-sale--U-S0jtj'}], ['img',{'class':'images--item--3XZa6xf'}])
+        # temu_google_products = crawl_site(driver,temu_url, ['div', {'class': 'pla-unit-container'}], ['span', {'class': 'pymv4e'}], ['span', {'class': 'e10twf'}])
+        # temu_products = crawl_site(driver,temu_url, ['div', {'class': '_6q6qVUF5 _1QhQr8pq _1ak1dai3 _3AbcHYoU'}], ['h2', {'class': '_2BvQbnbN'}], ['div', {'class': 'LiwdOzUs'}])
 
         # amazon_products = crawl_site(driver, amazon_url, ['div', {'data-component-type': 's-search-result'}], ['h2'], ['span', 'a-price'])
         # never_product = 
@@ -68,7 +73,7 @@ def run_selenium(keyword):
     finally:
         driver.quit()
 
-    return {'temu': temu_products}
+    return {'coupang': coupang_products, 'Ali': aliExpress_products}
 
 
 @router.get("/")
