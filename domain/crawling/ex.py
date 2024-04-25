@@ -60,15 +60,11 @@ def run_selenium(keyword):
         aliExpress_url = f"https://ko.aliexpress.com/w/wholesale-{keyword}.html?spm=a2g0o.productlist.search.0"
         # temu_url = f"https://www.google.com/search?q=site:temu.com+{keyword}84&sca_esv=45843383d781bdbb&rlz=1C5MACD_enKR1067KR1067&biw=1920&bih=934&udm=2&prmd=sivnbmz&sxsrf=ACQVn08jK64eyvGkZ0z3HzYkKbJ92UZOZw:1713965431454&source=lnms&ved=1t:200715&ictx=111"
         # amazon_url = f"https://www.amazon.com/s?k={keyword}&crid=27U3YQOWZ2RCZ&sprefix=us%2Caps%2C275&ref=nb_sb_noss_2"
-        # never_url = f""
 
         coupang_products = crawl_site(driver, coupang_url, ['li', {'class': 'search-product'}], ['div', {'class': 'name'}], ['strong', {'class': 'price-value'}],['img',{'class':'search-product-wrap-img'}])
         aliExpress_products = crawl_site(driver, aliExpress_url, ['div', {'class': 'list--gallery--C2f2tvm search-item-card-wrapper-gallery'}], ['h3', {'class': 'multi--titleText--nXeOvyr'}], ['div', {'class': 'multi--price-sale--U-S0jtj'}], ['img',{'class':'images--item--3XZa6xf'}])
-        # temu_google_products = crawl_site(driver,temu_url, ['div', {'class': 'pla-unit-container'}], ['span', {'class': 'pymv4e'}], ['span', {'class': 'e10twf'}])
         # temu_products = crawl_site(driver,temu_url, ['div', {'class': '_6q6qVUF5 _1QhQr8pq _1ak1dai3 _3AbcHYoU'}], ['h2', {'class': '_2BvQbnbN'}], ['div', {'class': 'LiwdOzUs'}])
-
         # amazon_products = crawl_site(driver, amazon_url, ['div', {'data-component-type': 's-search-result'}], ['h2'], ['span', 'a-price'])
-        # never_product = 
 
     finally:
         driver.quit()
