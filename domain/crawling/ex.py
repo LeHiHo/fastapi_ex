@@ -1,13 +1,14 @@
 import threading
 import time
 from bs4 import BeautifulSoup
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, validator
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
-# from selenium.webdriver.chrome.options import Options
-
-
+from pydantic import BaseModel, validator
 router = APIRouter(prefix="/api/products")
 
 class ProductQuery(BaseModel):
@@ -26,50 +27,50 @@ def setup_driver():
     options = Options()
     options.headless = True
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36")
-    # options.add_argument("--disable-gpu")
-    return webdriver.Firefox(options=options)
-
+    options.add_argument("--disable-gpu")
+    driver = webdriver.Firefox(options=options)
+    driver.implicitly_wait(10)
+    return driver
 
 def crawl_site(driver, url, find_all_args, name_args, price_args, img_args):
     driver.get(url)
-    time.sleep(5)
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
     products = []
-    for item in soup.find_all(*find_all_args):
-        name = item.find(*name_args)
-        price = item.find(*price_args)
-        img = item.find(*img_args)
-        if name and price and img:
-            img_url = img['src']
+    while True:
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, find_all_args[1]['class'])))
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        for item in soup.find_all(*find_all_args):
+            name = item.find(*name_args)
+            price = item.find(*price_args)
+            img = item.find(*img_args)
+            if name and price and img:
+                img_url = img['src']
+                if not img_url.startswith(('http:', 'https:')):
+                    img_url = 'https:' + img_url
+                products.append({
+                    'title': name.text.strip(),
+                    'price': price.text.strip(),
+                    'image_url': img_url
+                })
 
-            if not img_url.startswith(('http:', 'https:')):
-                img_url = 'https:' + img_url
-
-            products.append({
-                'title': name.text.strip(),
-                'price': price.text.strip(),
-                'image_url': img_url
-            })
+        try:
+            next_button = driver.find_element_by_css_selector("a.next-link-selector")
+            if next_button:
+                driver.execute_script("arguments[0].click();", next_button)
+                time.sleep(5)
+            else:
+                break
+        except NoSuchElementException:
+            break
     return products
 
 def run_selenium(keyword):
     driver = setup_driver()
     try:
-        coupang_url = f"https://www.coupang.com/np/search?component=&q={keyword}"        
         aliExpress_url = f"https://ko.aliexpress.com/w/wholesale-{keyword}.html?spm=a2g0o.productlist.search.0"
-        # temu_url = f"https://www.google.com/search?q=site:temu.com+{keyword}84&sca_esv=45843383d781bdbb&rlz=1C5MACD_enKR1067KR1067&biw=1920&bih=934&udm=2&prmd=sivnbmz&sxsrf=ACQVn08jK64eyvGkZ0z3HzYkKbJ92UZOZw:1713965431454&source=lnms&ved=1t:200715&ictx=111"
-        # amazon_url = f"https://www.amazon.com/s?k={keyword}&crid=27U3YQOWZ2RCZ&sprefix=us%2Caps%2C275&ref=nb_sb_noss_2"
-
-        coupang_products = crawl_site(driver, coupang_url, ['li', {'class': 'search-product'}], ['div', {'class': 'name'}], ['strong', {'class': 'price-value'}],['img',{'class':'search-product-wrap-img'}])
         aliExpress_products = crawl_site(driver, aliExpress_url, ['div', {'class': 'list--gallery--C2f2tvm search-item-card-wrapper-gallery'}], ['h3', {'class': 'multi--titleText--nXeOvyr'}], ['div', {'class': 'multi--price-sale--U-S0jtj'}], ['img',{'class':'images--item--3XZa6xf'}])
-        # temu_products = crawl_site(driver,temu_url, ['div', {'class': '_6q6qVUF5 _1QhQr8pq _1ak1dai3 _3AbcHYoU'}], ['h2', {'class': '_2BvQbnbN'}], ['div', {'class': 'LiwdOzUs'}])
-        # amazon_products = crawl_site(driver, amazon_url, ['div', {'data-component-type': 's-search-result'}], ['h2'], ['span', 'a-price'])
-
     finally:
         driver.quit()
-
-    return {'coupang': coupang_products, 'Ali': aliExpress_products}
-
+    return {'Ali': aliExpress_products}
 
 @router.get("/")
 async def search(query: ProductQuery = Depends()):
